@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chrome Tab Vault</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <main>
+    <header class="header">
+      <div>
+        <h1>Chrome Tab Vault</h1>
+        <p>Local tab backup for Chromium browsers</p>
+      </div>
+      <span id="contextBadge" class="badge">Checking…</span>
+    </header>
+
+    <section class="card">
+      <h2>Export</h2>
+      <label class="field-label" for="exportScope">Tabs to include</label>
+      <select id="exportScope">
+        <option value="current">Current window</option>
+        <option value="all">All windows in this mode</option>
+      </select>
+      <div class="button-row">
+        <button id="exportJson" class="primary" type="button">Export JSON</button>
+        <button id="exportTxt" class="primary" type="button">Export TXT</button>
+      </div>
+      <p class="hint">Both formats restore groups when created by this extension. A plain URL-list TXT file also
+        imports, but without groups.</p>
+    </section>
+
+    <section class="card">
+      <h2>Import</h2>
+      <label class="field-label" for="importTarget">Restore destination</label>
+      <select id="importTarget">
+        <option value="new">New window(s)</option>
+        <option value="current">Append to current window</option>
+      </select>
+      <input id="fileInput" type="file" accept=".json,.txt,application/json,text/plain" hidden>
+      <button id="chooseFile" class="primary full" type="button">Choose backup and restore</button>
+      <p class="hint">Nothing is uploaded. Restoring into the current window never closes existing tabs.</p>
+    </section>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+
+    <footer>
+      Incognito exports remain private only while handled carefully. The downloaded backup itself is a normal file
+      containing your URLs.
+    </footer>
+  </main>
+
+  <script src="core.js"></script>
+  <script src="popup.js"></script>
+</body>
+
+</html>
