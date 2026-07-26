@@ -1,6 +1,6 @@
 # Chrome Tab Vault
 
-A small, local-only Manifest V3 extension for Chrome and other Chromium-based desktop browsers.
+A small, local-only Manifest V3 extension for exporting & importing tabs in Chrome and other Chromium-based desktop browsers.
 
 ## Features
 
