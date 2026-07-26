@@ -109,7 +109,8 @@ h2 {
 }
 
 select,
-button {
+button,
+input[type="password"] {
   width: 100%;
   min-height: 38px;
   border: 1px solid var(--border);
@@ -119,8 +120,14 @@ button {
   font: inherit;
 }
 
-select {
+select,
+input[type="password"] {
   padding: 0 10px;
+}
+
+input[type="password"]:focus {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 button {
@@ -146,6 +153,42 @@ button.primary:hover:not(:disabled) {
 button:disabled {
   cursor: wait;
   opacity: 0.62;
+}
+
+.checkbox-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 11px;
+  cursor: pointer;
+}
+
+.checkbox-option input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+.checkbox-option > span {
+  min-width: 0;
+}
+
+.checkbox-title,
+.checkbox-detail {
+  display: block;
+}
+
+.checkbox-title {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.checkbox-detail {
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 10.5px;
 }
 
 .button-row {
@@ -190,4 +233,62 @@ button:disabled {
 footer {
   color: var(--muted);
   font-size: 10.5px;
+}
+
+dialog {
+  width: calc(100% - 32px);
+  max-width: 358px;
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.3);
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+
+dialog form {
+  padding: 16px;
+}
+
+dialog h2 {
+  margin-bottom: 6px;
+  font-size: 16px;
+}
+
+.dialog-description {
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+#passwordConfirmGroup {
+  margin-top: 11px;
+}
+
+.dialog-error {
+  min-height: 18px;
+  margin-top: 8px;
+  color: var(--error);
+  font-size: 11px;
+}
+
+.dialog-note {
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+.dialog-actions {
+  display: grid;
+  grid-template-columns: 0.8fr 1.4fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+[hidden] {
+  display: none !important;
 }

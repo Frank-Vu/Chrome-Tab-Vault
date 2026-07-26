@@ -9,20 +9,40 @@ const {
   parseTxt
 } = globalThis.TabVaultCore;
 
+const {
+  MIN_PASSWORD_LENGTH,
+  decryptBackupContent,
+  encryptBackupContent,
+  parseEncryptedEnvelope,
+  serializeEncryptedEnvelope
+} = globalThis.TabVaultCrypto;
+
 const TAB_GROUP_ID_NONE = -1;
 
 const elements = {
   contextBadge: document.getElementById('contextBadge'),
   exportScope: document.getElementById('exportScope'),
+  encryptExport: document.getElementById('encryptExport'),
   exportJson: document.getElementById('exportJson'),
   exportTxt: document.getElementById('exportTxt'),
   importTarget: document.getElementById('importTarget'),
   chooseFile: document.getElementById('chooseFile'),
   fileInput: document.getElementById('fileInput'),
-  status: document.getElementById('status')
+  status: document.getElementById('status'),
+  passwordDialog: document.getElementById('passwordDialog'),
+  passwordForm: document.getElementById('passwordForm'),
+  passwordTitle: document.getElementById('passwordTitle'),
+  passwordDescription: document.getElementById('passwordDescription'),
+  passwordInput: document.getElementById('passwordInput'),
+  passwordConfirmGroup: document.getElementById('passwordConfirmGroup'),
+  passwordConfirm: document.getElementById('passwordConfirm'),
+  passwordError: document.getElementById('passwordError'),
+  passwordCancel: document.getElementById('passwordCancel'),
+  passwordSubmit: document.getElementById('passwordSubmit')
 };
 
 let contextIsIncognito = false;
+let passwordRequest = null;
 
 void initialize();
 
@@ -40,11 +60,24 @@ async function initialize() {
   elements.exportTxt.addEventListener('click', () => void exportBackup('txt'));
   elements.chooseFile.addEventListener('click', () => elements.fileInput.click());
   elements.fileInput.addEventListener('change', () => void importSelectedFile());
+  elements.passwordForm.addEventListener('submit', handlePasswordSubmit);
+  elements.passwordCancel.addEventListener('click', () => finishPasswordRequest(null));
+  elements.passwordDialog.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    finishPasswordRequest(null);
+  });
 }
 
 function setBusy(isBusy) {
-  for (const button of [elements.exportJson, elements.exportTxt, elements.chooseFile]) {
-    button.disabled = isBusy;
+  for (const control of [
+    elements.exportScope,
+    elements.encryptExport,
+    elements.exportJson,
+    elements.exportTxt,
+    elements.importTarget,
+    elements.chooseFile
+  ]) {
+    control.disabled = isBusy;
   }
 }
 
@@ -56,6 +89,69 @@ function showStatus(message, kind = '') {
 function clearStatus() {
   elements.status.textContent = '';
   elements.status.className = 'status';
+}
+
+function requestPassword(options) {
+  elements.passwordTitle.textContent = options.title;
+  elements.passwordDescription.textContent = options.description;
+  elements.passwordSubmit.textContent = options.submitLabel;
+  elements.passwordConfirmGroup.hidden = !options.confirmPassword;
+  elements.passwordConfirm.required = options.confirmPassword;
+  elements.passwordInput.autocomplete = options.confirmPassword ? 'new-password' : 'current-password';
+  elements.passwordConfirm.autocomplete = 'new-password';
+  elements.passwordInput.value = '';
+  elements.passwordConfirm.value = '';
+  elements.passwordError.textContent = '';
+
+  return new Promise((resolve) => {
+    passwordRequest = { resolve, options };
+    elements.passwordDialog.showModal();
+    window.setTimeout(() => elements.passwordInput.focus(), 0);
+  });
+}
+
+function handlePasswordSubmit(event) {
+  event.preventDefault();
+  if (!passwordRequest) {
+    return;
+  }
+
+  const password = elements.passwordInput.value;
+  const minimumLength = passwordRequest.options.minimumLength || 1;
+  if (Array.from(password).length < minimumLength) {
+    elements.passwordError.textContent = minimumLength === 1
+      ? 'Enter the backup password.'
+      : `Use at least ${minimumLength} characters.`;
+    elements.passwordInput.focus();
+    return;
+  }
+
+  if (
+    passwordRequest.options.confirmPassword &&
+    password !== elements.passwordConfirm.value
+  ) {
+    elements.passwordError.textContent = 'The passwords do not match.';
+    elements.passwordConfirm.focus();
+    return;
+  }
+
+  finishPasswordRequest(password);
+}
+
+function finishPasswordRequest(result) {
+  if (!passwordRequest) {
+    return;
+  }
+
+  const { resolve } = passwordRequest;
+  passwordRequest = null;
+  elements.passwordInput.value = '';
+  elements.passwordConfirm.value = '';
+  elements.passwordError.textContent = '';
+  if (elements.passwordDialog.open) {
+    elements.passwordDialog.close();
+  }
+  resolve(result);
 }
 
 function safeFilePart(value) {
@@ -80,21 +176,44 @@ async function exportBackup(format) {
   setBusy(true);
 
   try {
+    const shouldEncrypt = elements.encryptExport.checked;
+    let password = null;
+    if (shouldEncrypt) {
+      password = await requestPassword({
+        title: 'Encrypt backup',
+        description: 'Create a password for this backup. You will need it whenever you restore the file.',
+        submitLabel: 'Encrypt and export',
+        confirmPassword: true,
+        minimumLength: MIN_PASSWORD_LENGTH
+      });
+      if (password === null) {
+        showStatus('Export cancelled.');
+        return;
+      }
+    }
+
     const scope = elements.exportScope.value;
     const archive = await collectArchive(scope);
     const totalTabs = archive.windows.reduce((sum, windowData) => sum + windowData.tabs.length, 0);
     const timestamp = safeFilePart(new Date().toISOString());
     const mode = contextIsIncognito ? 'incognito' : 'normal';
-    const extension = format === 'json' ? 'json' : 'txt';
-    const filename = `chrome-tabs-${mode}-${timestamp}.${extension}`;
+    const encryptedSuffix = shouldEncrypt ? '-encrypted' : '';
+    const filename = `chrome-tabs-${mode}${encryptedSuffix}-${timestamp}.${format}`;
+    const mimeType = format === 'json' ? 'application/json' : 'text/plain';
+    const plaintext = format === 'json'
+      ? `${JSON.stringify(archive, null, 2)}\n`
+      : archiveToTxt(archive);
+    let content = plaintext;
 
-    if (format === 'json') {
-      triggerDownload(`${JSON.stringify(archive, null, 2)}\n`, filename, 'application/json');
-    } else {
-      triggerDownload(archiveToTxt(archive), filename, 'text/plain');
+    if (shouldEncrypt) {
+      showStatus('Encrypting backup locally…');
+      const envelope = await encryptBackupContent(plaintext, password, format);
+      content = serializeEncryptedEnvelope(envelope, format);
     }
 
-    showStatus(`Exported ${totalTabs} tab${totalTabs === 1 ? '' : 's'} from ${archive.windows.length} window${archive.windows.length === 1 ? '' : 's'}.`, 'success');
+    triggerDownload(content, filename, mimeType);
+    const action = shouldEncrypt ? 'Exported and encrypted' : 'Exported';
+    showStatus(`${action} ${totalTabs} tab${totalTabs === 1 ? '' : 's'} from ${archive.windows.length} window${archive.windows.length === 1 ? '' : 's'}.`, 'success');
   } catch (error) {
     showStatus(`Export failed: ${error.message}`, 'error');
   } finally {
@@ -191,7 +310,30 @@ async function importSelectedFile() {
 
   try {
     const text = await file.text();
-    const archive = parseBackup(file.name, text);
+    const encryptedEnvelope = parseEncryptedEnvelope(text);
+    let backupText = text;
+    let formatHint = null;
+
+    if (encryptedEnvelope) {
+      const password = await requestPassword({
+        title: 'Unlock encrypted backup',
+        description: `Enter the password used to encrypt ${file.name}.`,
+        submitLabel: 'Decrypt and restore',
+        confirmPassword: false,
+        minimumLength: 1
+      });
+      if (password === null) {
+        showStatus('Import cancelled.');
+        return;
+      }
+
+      showStatus('Decrypting backup locally…');
+      const decrypted = await decryptBackupContent(encryptedEnvelope, password);
+      backupText = decrypted.plaintext;
+      formatHint = decrypted.payloadFormat;
+    }
+
+    const archive = parseBackup(file.name, backupText, formatHint);
 
     if (archive.source.incognito === true && !contextIsIncognito) {
       const continueInNormal = window.confirm(
@@ -226,13 +368,16 @@ async function importSelectedFile() {
   }
 }
 
-function parseBackup(filename, text) {
-  const looksLikeJson = filename.toLowerCase().endsWith('.json') || /^[\s\r\n]*[\[{]/.test(text);
+function parseBackup(filename, text, formatHint = null) {
+  const looksLikeJson = formatHint === 'json' || (
+    formatHint === null &&
+    (filename.toLowerCase().endsWith('.json') || /^[\s\r\n]*[\[{]/.test(text))
+  );
   if (looksLikeJson) {
     try {
       return normalizeArchive(JSON.parse(text));
     } catch (error) {
-      if (filename.toLowerCase().endsWith('.json')) {
+      if (formatHint === 'json' || filename.toLowerCase().endsWith('.json')) {
         throw new Error(`Invalid JSON backup: ${error.message}`);
       }
     }

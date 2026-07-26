@@ -25,6 +25,13 @@
         <option value="current">Current window</option>
         <option value="all">All windows in this mode</option>
       </select>
+      <label class="checkbox-option" for="encryptExport">
+        <input id="encryptExport" type="checkbox">
+        <span>
+          <span class="checkbox-title">Encrypt exported backup</span>
+          <span class="checkbox-detail">Off by default · password required to restore</span>
+        </span>
+      </label>
       <div class="button-row">
         <button id="exportJson" class="primary" type="button">Export JSON</button>
         <button id="exportTxt" class="primary" type="button">Export TXT</button>
@@ -49,11 +56,35 @@
 
     <footer>
       Incognito exports remain private only while handled carefully. The downloaded backup itself is a normal file
-      containing your URLs.
+      containing your URLs unless you enable encryption.
     </footer>
   </main>
 
+  <dialog id="passwordDialog" aria-labelledby="passwordTitle" aria-describedby="passwordDescription">
+    <form id="passwordForm">
+      <h2 id="passwordTitle">Backup password</h2>
+      <p id="passwordDescription" class="dialog-description"></p>
+
+      <label class="field-label" for="passwordInput">Password</label>
+      <input id="passwordInput" type="password" required>
+
+      <div id="passwordConfirmGroup">
+        <label class="field-label" for="passwordConfirm">Confirm password</label>
+        <input id="passwordConfirm" type="password">
+      </div>
+
+      <p id="passwordError" class="dialog-error" role="alert"></p>
+      <p class="dialog-note">The password stays on this device and is never stored. A lost password cannot be recovered.</p>
+
+      <div class="dialog-actions">
+        <button id="passwordCancel" type="button">Cancel</button>
+        <button id="passwordSubmit" class="primary" type="submit">Continue</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="core.js"></script>
+  <script src="crypto.js"></script>
   <script src="popup.js"></script>
 </body>
 
