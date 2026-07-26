@@ -30,7 +30,7 @@ async function initialize() {
   try {
     const currentWindow = await chrome.windows.getCurrent();
     contextIsIncognito = Boolean(currentWindow.incognito);
-    elements.contextBadge.textContent = contextIsIncognito ? '😎Incognito' : '😊Normal';
+    elements.contextBadge.textContent = contextIsIncognito ? `😎 Incognito · v${VERSION}` : `😊 Normal · v${VERSION}`;
     elements.contextBadge.classList.toggle('incognito', contextIsIncognito);
   } catch (error) {
     showStatus(`Could not detect browser mode: ${error.message}`, 'error');
