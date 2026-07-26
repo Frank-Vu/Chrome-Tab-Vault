@@ -297,23 +297,25 @@ async function restoreIntoNewWindows(archive) {
     }
   }
 
-  async function restoreIntoCurrentWindow(archive) {
-    const targetWindow = await chrome.windows.getCurrent();
-    const totals = { created: 0, failed: 0, groups: 0 };
+  return totals;
+}
 
-    for (let index = 0; index < archive.windows.length; index += 1) {
-      const result = await restoreWindowData(archive.windows[index], targetWindow.id, {
-        append: true,
-        placeholderTabId: null,
-        activateExportedTab: index === archive.windows.length - 1
-      });
-      totals.created += result.created;
-      totals.failed += result.failed;
-      totals.groups += result.groups;
-    }
+async function restoreIntoCurrentWindow(archive) {
+  const targetWindow = await chrome.windows.getCurrent();
+  const totals = { created: 0, failed: 0, groups: 0 };
 
-    return totals;
+  for (let index = 0; index < archive.windows.length; index += 1) {
+    const result = await restoreWindowData(archive.windows[index], targetWindow.id, {
+      append: true,
+      placeholderTabId: null,
+      activateExportedTab: index === archive.windows.length - 1
+    });
+    totals.created += result.created;
+    totals.failed += result.failed;
+    totals.groups += result.groups;
   }
+
+  return totals;
 }
 
 async function restoreWindowData(windowData, windowId, options) {
