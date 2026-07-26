@@ -5,7 +5,7 @@ A small, local-only Manifest V3 extension for exporting & importing tabs, includ
 ## Features
 
 - Export the current window or all windows available in the current browser mode.
-- Export as JSON or TXT format, unencrypted by default.
+- Export as JSON or TXT format. By default, unencrypted in normal window and encrypted in incognito mode.
 - Optionally encrypt either format locally with a password before download.
 - Detect encrypted JSON and TXT backups automatically and decrypt them locally during import.
 - Protect encrypted content with AES-256-GCM and a password-derived PBKDF2-SHA-256 key.

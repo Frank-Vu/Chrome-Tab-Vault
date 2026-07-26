@@ -50,6 +50,7 @@ async function initialize() {
   try {
     const currentWindow = await chrome.windows.getCurrent();
     contextIsIncognito = Boolean(currentWindow.incognito);
+    elements.encryptExport.checked = contextIsIncognito;
     elements.contextBadge.textContent = contextIsIncognito ? `😎 Incognito · v${VERSION}` : `😊 Normal · v${VERSION}`;
     elements.contextBadge.classList.toggle('incognito', contextIsIncognito);
   } catch (error) {

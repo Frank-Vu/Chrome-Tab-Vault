@@ -29,7 +29,7 @@
         <input id="encryptExport" type="checkbox">
         <span>
           <span class="checkbox-title">Encrypt exported backup</span>
-          <span class="checkbox-detail">Off by default · password required to restore</span>
+          <span class="checkbox-detail">Password required to restore encrypted backups</span>
         </span>
       </label>
       <div class="button-row">
@@ -74,7 +74,8 @@
       </div>
 
       <p id="passwordError" class="dialog-error" role="alert"></p>
-      <p class="dialog-note">The password stays on this device and is never stored. A lost password cannot be recovered.</p>
+      <p class="dialog-note">The password stays on this device and is never stored. A lost password cannot be recovered.
+      </p>
 
       <div class="dialog-actions">
         <button id="passwordCancel" type="button">Cancel</button>
