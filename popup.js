@@ -314,153 +314,153 @@ async function restoreIntoNewWindows(archive) {
 
     return totals;
   }
+}
 
-  async function restoreWindowData(windowData, windowId, options) {
-    const existingTabs = await chrome.tabs.query({ windowId });
-    const insertionStart = options.append ? existingTabs.length : 0;
-    const createdTabs = [];
-    let failed = 0;
+async function restoreWindowData(windowData, windowId, options) {
+  const existingTabs = await chrome.tabs.query({ windowId });
+  const insertionStart = options.append ? existingTabs.length : 0;
+  const createdTabs = [];
+  let failed = 0;
 
-    for (let index = 0; index < windowData.tabs.length; index += 1) {
-      const tabData = windowData.tabs[index];
-      const url = normalizeUrl(tabData.url);
-      if (!url) {
-        failed += 1;
-        continue;
-      }
-
-      try {
-        const createdTab = await chrome.tabs.create({
-          windowId,
-          url,
-          active: false,
-          pinned: false,
-          index: insertionStart + createdTabs.length
-        });
-        createdTabs.push({
-          id: createdTab.id,
-          data: tabData,
-          originalIndex: index
-        });
-      } catch (error) {
-        console.warn(`Could not restore ${url}:`, error);
-        failed += 1;
-      }
+  for (let index = 0; index < windowData.tabs.length; index += 1) {
+    const tabData = windowData.tabs[index];
+    const url = normalizeUrl(tabData.url);
+    if (!url) {
+      failed += 1;
+      continue;
     }
 
-    if (options.placeholderTabId && createdTabs.length > 0) {
-      try {
-        await chrome.tabs.remove(options.placeholderTabId);
-      } catch (error) {
-        console.warn('Could not remove placeholder tab:', error);
-      }
+    try {
+      const createdTab = await chrome.tabs.create({
+        windowId,
+        url,
+        active: false,
+        pinned: false,
+        index: insertionStart + createdTabs.length
+      });
+      createdTabs.push({
+        id: createdTab.id,
+        data: tabData,
+        originalIndex: index
+      });
+    } catch (error) {
+      console.warn(`Could not restore ${url}:`, error);
+      failed += 1;
     }
-
-    for (const entry of createdTabs) {
-      const updateProperties = {
-        autoDiscardable: entry.data.autoDiscardable !== false
-      };
-      if (entry.data.muted) {
-        updateProperties.muted = true;
-      }
-
-      try {
-        await chrome.tabs.update(entry.id, updateProperties);
-      } catch (error) {
-        console.warn('Could not restore tab properties:', error);
-      }
-    }
-
-    for (const entry of createdTabs.filter((item) => item.data.pinned)) {
-      try {
-        await chrome.tabs.update(entry.id, { pinned: true });
-      } catch (error) {
-        console.warn('Could not pin restored tab:', error);
-      }
-    }
-
-    const groupedEntries = new Map();
-    for (const entry of createdTabs) {
-      if (!entry.data.groupKey || entry.data.pinned) {
-        continue;
-      }
-      if (!groupedEntries.has(entry.data.groupKey)) {
-        groupedEntries.set(entry.data.groupKey, []);
-      }
-      groupedEntries.get(entry.data.groupKey).push(entry);
-    }
-
-    const groupsInOrder = [...groupedEntries.entries()].sort((left, right) => {
-      const leftIndex = Math.min(...left[1].map((entry) => entry.originalIndex));
-      const rightIndex = Math.min(...right[1].map((entry) => entry.originalIndex));
-      return leftIndex - rightIndex;
-    });
-
-    const groupsToCollapse = [];
-    let restoredGroups = 0;
-    for (const [groupKey, entries] of groupsInOrder) {
-      const groupData = windowData.groups[groupKey] || {
-        title: '',
-        color: 'grey',
-        collapsed: false
-      };
-
-      try {
-        const groupId = await chrome.tabs.group({
-          tabIds: entries.map((entry) => entry.id),
-          createProperties: { windowId }
-        });
-        await chrome.tabGroups.update(groupId, {
-          title: groupData.title || '',
-          color: groupData.color || 'grey',
-          collapsed: false
-        });
-        groupsToCollapse.push({ groupId, collapsed: Boolean(groupData.collapsed) });
-        restoredGroups += 1;
-      } catch (error) {
-        console.warn(`Could not restore group ${groupKey}:`, error);
-      }
-    }
-
-    let activeEntry = createdTabs.find((entry) => entry.data.active);
-    if (!activeEntry && createdTabs.length > 0) {
-      activeEntry = createdTabs[0];
-    }
-
-    if (options.activateExportedTab && activeEntry) {
-      try {
-        await chrome.tabs.update(activeEntry.id, { active: true });
-      } catch (error) {
-        console.warn('Could not activate restored tab:', error);
-      }
-    }
-
-    for (const group of groupsToCollapse) {
-      if (!group.collapsed) {
-        continue;
-      }
-      try {
-        await chrome.tabGroups.update(group.groupId, { collapsed: true });
-      } catch (error) {
-        console.warn('Could not collapse restored group:', error);
-      }
-    }
-
-    for (const entry of createdTabs) {
-      if (!entry.data.discarded || (activeEntry && entry.id === activeEntry.id)) {
-        continue;
-      }
-      try {
-        await chrome.tabs.discard(entry.id);
-      } catch (error) {
-        console.warn('Could not discard restored tab:', error);
-      }
-    }
-
-    return {
-      created: createdTabs.length,
-      failed,
-      groups: restoredGroups
-    };
   }
+
+  if (options.placeholderTabId && createdTabs.length > 0) {
+    try {
+      await chrome.tabs.remove(options.placeholderTabId);
+    } catch (error) {
+      console.warn('Could not remove placeholder tab:', error);
+    }
+  }
+
+  for (const entry of createdTabs) {
+    const updateProperties = {
+      autoDiscardable: entry.data.autoDiscardable !== false
+    };
+    if (entry.data.muted) {
+      updateProperties.muted = true;
+    }
+
+    try {
+      await chrome.tabs.update(entry.id, updateProperties);
+    } catch (error) {
+      console.warn('Could not restore tab properties:', error);
+    }
+  }
+
+  for (const entry of createdTabs.filter((item) => item.data.pinned)) {
+    try {
+      await chrome.tabs.update(entry.id, { pinned: true });
+    } catch (error) {
+      console.warn('Could not pin restored tab:', error);
+    }
+  }
+
+  const groupedEntries = new Map();
+  for (const entry of createdTabs) {
+    if (!entry.data.groupKey || entry.data.pinned) {
+      continue;
+    }
+    if (!groupedEntries.has(entry.data.groupKey)) {
+      groupedEntries.set(entry.data.groupKey, []);
+    }
+    groupedEntries.get(entry.data.groupKey).push(entry);
+  }
+
+  const groupsInOrder = [...groupedEntries.entries()].sort((left, right) => {
+    const leftIndex = Math.min(...left[1].map((entry) => entry.originalIndex));
+    const rightIndex = Math.min(...right[1].map((entry) => entry.originalIndex));
+    return leftIndex - rightIndex;
+  });
+
+  const groupsToCollapse = [];
+  let restoredGroups = 0;
+  for (const [groupKey, entries] of groupsInOrder) {
+    const groupData = windowData.groups[groupKey] || {
+      title: '',
+      color: 'grey',
+      collapsed: false
+    };
+
+    try {
+      const groupId = await chrome.tabs.group({
+        tabIds: entries.map((entry) => entry.id),
+        createProperties: { windowId }
+      });
+      await chrome.tabGroups.update(groupId, {
+        title: groupData.title || '',
+        color: groupData.color || 'grey',
+        collapsed: false
+      });
+      groupsToCollapse.push({ groupId, collapsed: Boolean(groupData.collapsed) });
+      restoredGroups += 1;
+    } catch (error) {
+      console.warn(`Could not restore group ${groupKey}:`, error);
+    }
+  }
+
+  let activeEntry = createdTabs.find((entry) => entry.data.active);
+  if (!activeEntry && createdTabs.length > 0) {
+    activeEntry = createdTabs[0];
+  }
+
+  if (options.activateExportedTab && activeEntry) {
+    try {
+      await chrome.tabs.update(activeEntry.id, { active: true });
+    } catch (error) {
+      console.warn('Could not activate restored tab:', error);
+    }
+  }
+
+  for (const group of groupsToCollapse) {
+    if (!group.collapsed) {
+      continue;
+    }
+    try {
+      await chrome.tabGroups.update(group.groupId, { collapsed: true });
+    } catch (error) {
+      console.warn('Could not collapse restored group:', error);
+    }
+  }
+
+  for (const entry of createdTabs) {
+    if (!entry.data.discarded || (activeEntry && entry.id === activeEntry.id)) {
+      continue;
+    }
+    try {
+      await chrome.tabs.discard(entry.id);
+    } catch (error) {
+      console.warn('Could not discard restored tab:', error);
+    }
+  }
+
+  return {
+    created: createdTabs.length,
+    failed,
+    groups: restoredGroups
+  };
 }

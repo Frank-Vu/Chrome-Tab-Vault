@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Chrome Tab Vault",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Export and restore Chromium tabs locally, including tab groups, order, pinned state, and window layout.",
   "permissions": [
     "tabs",
