@@ -84,6 +84,29 @@
     </form>
   </dialog>
 
+  <dialog id="reviewDialog" aria-labelledby="reviewTitle" aria-describedby="reviewDescription">
+    <form id="reviewForm">
+      <h2 id="reviewTitle">Review tabs</h2>
+      <p id="reviewDescription" class="dialog-description"></p>
+      <p id="reviewWarning" class="review-warning" role="alert" hidden></p>
+
+      <label id="reviewSelectAllOption" class="review-select-all" for="reviewSelectAll" hidden>
+        <input id="reviewSelectAll" type="checkbox" checked>
+        <span>
+          <span class="review-select-all-title">All tabs</span>
+          <span id="reviewSelectionSummary" class="review-selection-summary"></span>
+        </span>
+      </label>
+
+      <div id="reviewList" class="review-list" aria-label="Tabs in this backup"></div>
+
+      <div class="dialog-actions review-actions">
+        <button id="reviewCancel" type="button">Cancel</button>
+        <button id="reviewSubmit" class="primary" type="submit">Continue</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="core.js"></script>
   <script src="crypto.js"></script>
   <script src="popup.js"></script>

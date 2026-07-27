@@ -5,6 +5,8 @@ A small, local-only Manifest V3 extension for exporting & importing tabs, includ
 ## Features
 
 - Export the current window or all windows available in the current browser mode.
+- Review the full tab list, grouped by window, before an export is downloaded or an import opens any tabs.
+- Choose individual tabs to export, or use the checked-by-default **All tabs** option.
 - Export as JSON or TXT format. By default, unencrypted in normal window and encrypted in incognito mode.
 - Optionally encrypt either format locally with a password before download.
 - Detect encrypted JSON and TXT backups automatically and decrypt them locally during import.
@@ -40,7 +42,8 @@ The extension uses split Incognito mode. When opened in a normal window, it work
 2. Select **Current window** or **All windows in this mode**.
 3. Optional: enable **Encrypt exported backup**. Encryption is disabled by default.
 4. Choose **Export JSON** or **Export TXT**.
-5. If encryption is enabled, create and confirm a password when prompted.
+5. Review the tabs, uncheck anything you do not want to include, and confirm the export. **All tabs** is checked by default.
+6. If encryption is enabled, create and confirm a password when prompted.
 
 JSON is the most straightforward full-fidelity backup. The extension's own TXT format also retains groups and tab metadata while remaining readable in a text editor.
 
@@ -53,6 +56,7 @@ Encrypted JSON remains a JSON encryption envelope. Encrypted TXT starts with a r
 3. Click **Choose backup and restore**.
 4. Select the JSON or TXT backup.
 5. If the backup is encrypted, enter its password when prompted.
+6. Review the tabs in the backup and confirm the selected restore destination.
 
 Importing into the current window does not close existing tabs. If a backup contains multiple windows, their tabs are appended sequentially when using the current-window option.
 

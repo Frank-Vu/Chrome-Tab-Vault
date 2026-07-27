@@ -2,7 +2,7 @@
   'use strict';
 
   const FORMAT = 'chrome-tab-vault';
-  const VERSION = '1.6.1';
+  const VERSION = '1.7.3';
   const VALID_COLORS = new Set([
     'grey', 'blue', 'red', 'yellow', 'green',
     'pink', 'purple', 'cyan', 'orange'

@@ -282,11 +282,175 @@ dialog h2 {
   font-size: 10.5px;
 }
 
+.review-warning {
+  margin: -4px 0 12px;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--warning-text) 45%, var(--border));
+  border-radius: 8px;
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  font-size: 11px;
+}
+
+.review-select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+
+.review-select-all > span {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+
+.review-select-all input,
+.review-tab-checkbox {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.review-select-all-title,
+.review-selection-summary {
+  display: block;
+}
+
+.review-select-all-title {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.review-selection-summary {
+  margin-top: 0;
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.review-list {
+  max-height: min(330px, 48vh);
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+}
+
+.review-window {
+  margin-top: 12px;
+}
+
+.review-window:first-child {
+  margin-top: 0;
+}
+
+.review-window-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 6px;
+  padding: 4px 0;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.review-window-title.has-select-all {
+  display: flex;
+  align-items: center;
+}
+
+.review-tabs {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-tab {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.review-tab.selectable {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.review-tab.selectable:has(.review-tab-checkbox:not(:checked)) .review-tab-content {
+  opacity: 0.55;
+}
+
+.review-tab-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.review-tab.selectable .review-tab-content {
+  cursor: pointer;
+}
+
+.review-tab-title,
+.review-tab-url {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-tab-title {
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.review-tab-url {
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.review-tab-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.review-tab-tag {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--card));
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 650;
+}
+
 .dialog-actions {
   display: grid;
   grid-template-columns: 0.8fr 1.4fr;
   gap: 8px;
   margin-top: 14px;
+}
+
+.review-actions {
+  grid-template-columns: 0.75fr 1.6fr;
+}
+
+.review-actions button:disabled {
+  cursor: not-allowed;
 }
 
 [hidden] {

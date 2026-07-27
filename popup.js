@@ -38,11 +38,23 @@ const elements = {
   passwordConfirm: document.getElementById('passwordConfirm'),
   passwordError: document.getElementById('passwordError'),
   passwordCancel: document.getElementById('passwordCancel'),
-  passwordSubmit: document.getElementById('passwordSubmit')
+  passwordSubmit: document.getElementById('passwordSubmit'),
+  reviewDialog: document.getElementById('reviewDialog'),
+  reviewForm: document.getElementById('reviewForm'),
+  reviewTitle: document.getElementById('reviewTitle'),
+  reviewDescription: document.getElementById('reviewDescription'),
+  reviewWarning: document.getElementById('reviewWarning'),
+  reviewSelectAllOption: document.getElementById('reviewSelectAllOption'),
+  reviewSelectAll: document.getElementById('reviewSelectAll'),
+  reviewSelectionSummary: document.getElementById('reviewSelectionSummary'),
+  reviewList: document.getElementById('reviewList'),
+  reviewCancel: document.getElementById('reviewCancel'),
+  reviewSubmit: document.getElementById('reviewSubmit')
 };
 
 let contextIsIncognito = false;
 let passwordRequest = null;
+let reviewRequest = null;
 
 void initialize();
 
@@ -66,6 +78,21 @@ async function initialize() {
   elements.passwordDialog.addEventListener('cancel', (event) => {
     event.preventDefault();
     finishPasswordRequest(null);
+  });
+  elements.reviewForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    finishArchiveReview(true);
+  });
+  elements.reviewSelectAll.addEventListener('change', toggleAllReviewTabs);
+  elements.reviewList.addEventListener('change', (event) => {
+    if (event.target.classList.contains('review-tab-checkbox')) {
+      updateReviewSelection();
+    }
+  });
+  elements.reviewCancel.addEventListener('click', () => finishArchiveReview(false));
+  elements.reviewDialog.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    finishArchiveReview(false);
   });
 }
 
@@ -155,6 +182,200 @@ function finishPasswordRequest(result) {
   resolve(result);
 }
 
+function archiveTabCount(archive) {
+  return archive.windows.reduce((sum, windowData) => sum + windowData.tabs.length, 0);
+}
+
+function countLabel(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function createReviewTag(label) {
+  const tag = document.createElement('span');
+  tag.className = 'review-tab-tag';
+  tag.textContent = label;
+  return tag;
+}
+
+function renderArchiveReview(archive, selectable) {
+  const windowSections = archive.windows.map((windowData, windowIndex) => {
+    const section = document.createElement('section');
+    section.className = 'review-window';
+
+    const heading = document.createElement('h3');
+    heading.className = 'review-window-title';
+    const windowLabel = `Window ${windowIndex + 1} · ${countLabel(windowData.tabs.length, 'tab')}`;
+    if (selectable && windowIndex === 0) {
+      heading.classList.add('has-select-all');
+      heading.appendChild(elements.reviewSelectAllOption);
+    } else {
+      heading.textContent = windowLabel;
+    }
+    section.appendChild(heading);
+
+    const list = document.createElement('ol');
+    list.className = 'review-tabs';
+
+    for (const [tabIndex, tab] of windowData.tabs.entries()) {
+      const item = document.createElement('li');
+      item.className = 'review-tab';
+      item.title = tab.url;
+
+      const content = document.createElement(selectable ? 'label' : 'span');
+      content.className = 'review-tab-content';
+
+      if (selectable) {
+        const checkbox = document.createElement('input');
+        checkbox.id = `review-tab-${windowIndex}-${tabIndex}`;
+        checkbox.className = 'review-tab-checkbox';
+        checkbox.type = 'checkbox';
+        checkbox.checked = true;
+        checkbox.dataset.windowIndex = String(windowIndex);
+        checkbox.dataset.tabIndex = String(tabIndex);
+        checkbox.setAttribute('aria-label', `Include ${tab.title || tab.url}`);
+        content.htmlFor = checkbox.id;
+        item.classList.add('selectable');
+        item.appendChild(checkbox);
+      }
+
+      const title = document.createElement('span');
+      title.className = 'review-tab-title';
+      title.textContent = tab.title || 'Untitled tab';
+      content.appendChild(title);
+
+      const url = document.createElement('span');
+      url.className = 'review-tab-url';
+      url.textContent = tab.url;
+      content.appendChild(url);
+
+      const group = tab.groupKey && windowData.groups[tab.groupKey];
+      if (tab.pinned || group) {
+        const metadata = document.createElement('span');
+        metadata.className = 'review-tab-meta';
+        if (tab.pinned) {
+          metadata.appendChild(createReviewTag('Pinned'));
+        }
+        if (group) {
+          metadata.appendChild(createReviewTag(group.title || 'Unnamed group'));
+        }
+        content.appendChild(metadata);
+      }
+
+      item.appendChild(content);
+      list.appendChild(item);
+    }
+
+    section.appendChild(list);
+    return section;
+  });
+
+  elements.reviewList.replaceChildren(...windowSections);
+  elements.reviewList.scrollTop = 0;
+}
+
+function reviewTabCheckboxes() {
+  return [...elements.reviewList.querySelectorAll('.review-tab-checkbox')];
+}
+
+function updateReviewSelection() {
+  const checkboxes = reviewTabCheckboxes();
+  const selectedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+  elements.reviewSelectAll.checked = selectedCount === checkboxes.length;
+  elements.reviewSelectAll.indeterminate = selectedCount > 0 && selectedCount < checkboxes.length;
+  elements.reviewSelectionSummary.textContent = `${selectedCount} of ${checkboxes.length} selected`;
+  elements.reviewSubmit.disabled = selectedCount === 0;
+}
+
+function toggleAllReviewTabs() {
+  for (const checkbox of reviewTabCheckboxes()) {
+    checkbox.checked = elements.reviewSelectAll.checked;
+  }
+  updateReviewSelection();
+}
+
+function selectedArchive(archive) {
+  const selectedTabsByWindow = new Map();
+  for (const checkbox of reviewTabCheckboxes()) {
+    if (!checkbox.checked) {
+      continue;
+    }
+
+    const windowIndex = Number(checkbox.dataset.windowIndex);
+    if (!selectedTabsByWindow.has(windowIndex)) {
+      selectedTabsByWindow.set(windowIndex, new Set());
+    }
+    selectedTabsByWindow.get(windowIndex).add(Number(checkbox.dataset.tabIndex));
+  }
+
+  const windows = archive.windows.flatMap((windowData, windowIndex) => {
+    const selectedIndexes = selectedTabsByWindow.get(windowIndex);
+    if (!selectedIndexes) {
+      return [];
+    }
+
+    const tabs = windowData.tabs.filter((tab, tabIndex) => selectedIndexes.has(tabIndex));
+    const usedGroupKeys = new Set(tabs.map((tab) => tab.groupKey).filter(Boolean));
+    const groups = Object.fromEntries(
+      Object.entries(windowData.groups).filter(([groupKey]) => usedGroupKeys.has(groupKey))
+    );
+    return [{ ...windowData, tabs, groups }];
+  });
+
+  return { ...archive, windows };
+}
+
+function requestArchiveReview(options) {
+  elements.reviewTitle.textContent = options.title;
+  elements.reviewDescription.textContent = options.description;
+  elements.reviewSubmit.textContent = options.submitLabel;
+  elements.reviewWarning.textContent = options.warning || '';
+  elements.reviewWarning.hidden = !options.warning;
+  elements.reviewSelectAllOption.hidden = !options.selectable;
+  elements.reviewSelectAll.checked = true;
+  elements.reviewSelectAll.indeterminate = false;
+  elements.reviewSubmit.disabled = false;
+  renderArchiveReview(options.archive, Boolean(options.selectable));
+  if (options.selectable) {
+    updateReviewSelection();
+  }
+
+  return new Promise((resolve) => {
+    reviewRequest = {
+      resolve,
+      archive: options.archive,
+      selectable: Boolean(options.selectable)
+    };
+    elements.reviewDialog.showModal();
+    window.setTimeout(() => {
+      const initialControl = options.selectable
+        ? elements.reviewSelectAll
+        : elements.reviewSubmit;
+      initialControl.focus();
+    }, 0);
+  });
+}
+
+function finishArchiveReview(confirmed) {
+  if (!reviewRequest) {
+    return;
+  }
+
+  const { resolve, archive, selectable } = reviewRequest;
+  const result = confirmed
+    ? (selectable ? selectedArchive(archive) : archive)
+    : null;
+  if (confirmed && selectable && result.windows.length === 0) {
+    updateReviewSelection();
+    return;
+  }
+
+  reviewRequest = null;
+  if (elements.reviewDialog.open) {
+    elements.reviewDialog.close();
+  }
+  resolve(result);
+}
+
 function safeFilePart(value) {
   return String(value).replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
 }
@@ -177,6 +398,25 @@ async function exportBackup(format) {
   setBusy(true);
 
   try {
+    const scope = elements.exportScope.value;
+    showStatus('Collecting tabs for review…');
+    const collectedArchive = await collectArchive(scope);
+    const availableTabs = archiveTabCount(collectedArchive);
+    clearStatus();
+
+    const archive = await requestArchiveReview({
+      archive: collectedArchive,
+      title: `Review ${format.toUpperCase()} export`,
+      description: `${countLabel(availableTabs, 'tab')} from ${countLabel(collectedArchive.windows.length, 'window')} are available.`,
+      submitLabel: `Export ${format.toUpperCase()}`,
+      selectable: true
+    });
+    if (!archive) {
+      showStatus('Export cancelled.');
+      return;
+    }
+    const totalTabs = archiveTabCount(archive);
+
     const shouldEncrypt = elements.encryptExport.checked;
     let password = null;
     if (shouldEncrypt) {
@@ -193,9 +433,6 @@ async function exportBackup(format) {
       }
     }
 
-    const scope = elements.exportScope.value;
-    const archive = await collectArchive(scope);
-    const totalTabs = archive.windows.reduce((sum, windowData) => sum + windowData.tabs.length, 0);
     const timestamp = safeFilePart(new Date().toISOString());
     const mode = contextIsIncognito ? 'incognito' : 'normal';
     const encryptedSuffix = shouldEncrypt ? '-encrypted' : '';
@@ -319,7 +556,7 @@ async function importSelectedFile() {
       const password = await requestPassword({
         title: 'Unlock encrypted backup',
         description: `Enter the password used to encrypt ${file.name}.`,
-        submitLabel: 'Decrypt and restore',
+        submitLabel: 'Decrypt and review',
         confirmPassword: false,
         minimumLength: 1
       });
@@ -335,18 +572,28 @@ async function importSelectedFile() {
     }
 
     const archive = parseBackup(file.name, backupText, formatHint);
-
-    if (archive.source.incognito === true && !contextIsIncognito) {
-      const continueInNormal = window.confirm(
-        'This backup was exported from Incognito. Restoring it here will open those URLs in a normal window and may add them to normal browser history. Continue?'
-      );
-      if (!continueInNormal) {
-        showStatus('Import cancelled. Open an Incognito window and run the extension there to restore privately.');
-        return;
-      }
+    const target = elements.importTarget.value;
+    const totalTabs = archiveTabCount(archive);
+    const targetIsCurrent = target === 'current';
+    const shouldContinue = await requestArchiveReview({
+      archive,
+      title: 'Review tabs to import',
+      description: `${file.name} contains ${countLabel(totalTabs, 'tab')} across ${countLabel(archive.windows.length, 'window')}.`,
+      submitLabel: targetIsCurrent
+        ? `Append ${countLabel(totalTabs, 'tab')}`
+        : `Open ${countLabel(archive.windows.length, 'new window')}`,
+      warning: archive.source.incognito === true && !contextIsIncognito
+        ? 'This backup came from Incognito. Continuing here will open its URLs in normal windows and may add them to normal browser history.'
+        : ''
+    });
+    if (!shouldContinue) {
+      const incognitoSuggestion = archive.source.incognito === true && !contextIsIncognito
+        ? ' Open an Incognito window and run the extension there to restore privately.'
+        : '';
+      showStatus(`Import cancelled.${incognitoSuggestion}`);
+      return;
     }
 
-    const target = elements.importTarget.value;
     const result = target === 'current'
       ? await restoreIntoCurrentWindow(archive)
       : await restoreIntoNewWindows(archive);
